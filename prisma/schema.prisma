@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  clerkId      String   @unique
+  email        String
+  displayName  String?
+  distanceUnit String   @default("miles")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  shoes        Shoe[]
+  walkLogs     WalkLog[]
+}
+
+model Shoe {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  name            String
+  brand           String
+  photoUrl        String?
+  startingMileage Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  retiredAt       DateTime?
+  walks           WalkLog[]
+  @@index([userId])
+}
+
+model WalkLog {
+  id        String   @id @default(cuid())
+  shoeId    String
+  shoe      Shoe     @relation(fields: [shoeId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  miles     Float
+  date      DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  @@index([shoeId])
+  @@index([userId])
+}
