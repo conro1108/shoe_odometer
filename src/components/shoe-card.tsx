@@ -5,7 +5,6 @@ import { formatDistanceToNow } from "date-fns";
 import { MoreVertical, Pencil, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,

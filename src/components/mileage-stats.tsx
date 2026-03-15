@@ -8,7 +8,8 @@ interface MileageStatsProps {
 }
 
 export function MileageStats({ totalMileage, walkCount, walks }: MileageStatsProps) {
-  const avgPerWalk = walkCount > 0 ? totalMileage / walkCount : null;
+  const walkedMiles = walks.reduce((sum, w) => sum + w.miles, 0);
+  const avgPerWalk = walks.length > 0 ? walkedMiles / walks.length : null;
 
   const now = new Date();
   const thisMonthMiles = walks

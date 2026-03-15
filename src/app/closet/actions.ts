@@ -11,6 +11,8 @@ import {
 } from "@/lib/queries/shoes";
 import { createWalk, updateWalk, deleteWalk } from "@/lib/queries/walks";
 import { getUploadUrl } from "@/lib/upload";
+import { shoeSchema } from "@/lib/validations/shoe";
+import { walkSchema } from "@/lib/validations/walk";
 
 type ActionResult<T = unknown> =
   | { success: true; data: T }
@@ -19,14 +21,16 @@ type ActionResult<T = unknown> =
 export async function addShoeAction(formData: FormData): Promise<ActionResult> {
   try {
     const user = await getCurrentUser();
-    const name = formData.get("name") as string;
-    const brand = formData.get("brand") as string;
-    const photoUrl = (formData.get("photoUrl") as string) || undefined;
-    const startingMileage = parseFloat(formData.get("startingMileage") as string) || 0;
-
-    if (!name || !brand) return { success: false, error: "Name and brand are required" };
-
-    const shoe = await createShoe(user.id, { name, brand, photoUrl, startingMileage });
+    const parsed = shoeSchema.safeParse({
+      name: formData.get("name"),
+      brand: formData.get("brand"),
+      startingMileage: formData.get("startingMileage"),
+      photoUrl: formData.get("photoUrl") || undefined,
+    });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
+    const shoe = await createShoe(user.id, parsed.data);
     revalidatePath("/closet");
     return { success: true, data: shoe };
   } catch (e) {
@@ -37,13 +41,22 @@ export async function addShoeAction(formData: FormData): Promise<ActionResult> {
 export async function updateShoeAction(shoeId: string, formData: FormData): Promise<ActionResult> {
   try {
     const user = await getCurrentUser();
-    const name = (formData.get("name") as string) || undefined;
-    const brand = (formData.get("brand") as string) || undefined;
-    const photoUrl = (formData.get("photoUrl") as string) || undefined;
-    const startingMileageRaw = formData.get("startingMileage");
-    const startingMileage = startingMileageRaw ? parseFloat(startingMileageRaw as string) : undefined;
-
-    const shoe = await updateShoe(shoeId, user.id, { name, brand, photoUrl, startingMileage });
+    const photoUrlRaw = formData.get("photoUrl");
+    const parsed = shoeSchema.partial().safeParse({
+      name: formData.get("name") || undefined,
+      brand: formData.get("brand") || undefined,
+      startingMileage: formData.get("startingMileage") || undefined,
+      // null → clear; undefined → don't update
+      photoUrl: photoUrlRaw !== null ? photoUrlRaw || null : undefined,
+    });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
+    const shoe = await updateShoe(
+      shoeId,
+      user.id,
+      parsed.data as unknown as Parameters<typeof updateShoe>[2]
+    );
     revalidatePath("/closet");
     revalidatePath(`/closet/${shoeId}`);
     return { success: true, data: shoe };
@@ -90,18 +103,21 @@ export async function unretireShoeAction(shoeId: string): Promise<ActionResult> 
 export async function addWalkAction(formData: FormData): Promise<ActionResult> {
   try {
     const user = await getCurrentUser();
-    const shoeId = formData.get("shoeId") as string;
-    const miles = parseFloat(formData.get("miles") as string);
-    const date = new Date(formData.get("date") as string);
-    const notes = (formData.get("notes") as string) || undefined;
-
-    if (!shoeId || isNaN(miles) || isNaN(date.getTime())) {
-      return { success: false, error: "shoeId, miles, and date are required" };
+    const parsed = walkSchema.safeParse({
+      shoeId: formData.get("shoeId"),
+      miles: formData.get("miles"),
+      date: formData.get("date"),
+      notes: formData.get("notes") || undefined,
+    });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
     }
-
-    const walk = await createWalk(user.id, { shoeId, miles, date, notes });
+    const walk = await createWalk(user.id, {
+      ...parsed.data,
+      notes: parsed.data.notes ?? undefined,
+    });
     revalidatePath("/closet");
-    revalidatePath(`/closet/${shoeId}`);
+    revalidatePath(`/closet/${parsed.data.shoeId}`);
     return { success: true, data: walk };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -111,14 +127,21 @@ export async function addWalkAction(formData: FormData): Promise<ActionResult> {
 export async function updateWalkAction(walkId: string, formData: FormData): Promise<ActionResult> {
   try {
     const user = await getCurrentUser();
-    const milesRaw = formData.get("miles");
-    const dateRaw = formData.get("date");
-    const notes = (formData.get("notes") as string) || undefined;
-
-    const miles = milesRaw ? parseFloat(milesRaw as string) : undefined;
-    const date = dateRaw ? new Date(dateRaw as string) : undefined;
-
-    const walk = await updateWalk(walkId, user.id, { miles, date, notes });
+    const notesRaw = formData.get("notes");
+    const parsed = walkSchema.omit({ shoeId: true }).partial().safeParse({
+      miles: formData.get("miles") || undefined,
+      date: formData.get("date") || undefined,
+      // null → clear; undefined → don't update
+      notes: notesRaw !== null ? notesRaw || null : undefined,
+    });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
+    const walk = await updateWalk(
+      walkId,
+      user.id,
+      parsed.data as unknown as Parameters<typeof updateWalk>[2]
+    );
     revalidatePath("/closet");
     revalidatePath(`/closet/${walk.shoeId}`);
     return { success: true, data: walk };
@@ -141,6 +164,9 @@ export async function deleteWalkAction(walkId: string): Promise<ActionResult> {
 
 export async function getUploadUrlAction(fileName: string): Promise<ActionResult> {
   try {
+    if (!fileName || typeof fileName !== "string" || fileName.length > 255) {
+      return { success: false, error: "Invalid file name" };
+    }
     const user = await getCurrentUser();
     const result = await getUploadUrl(user.id, fileName);
     return { success: true, data: result };

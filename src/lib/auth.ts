@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "./prisma";
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const { userId: clerkUserId } = await auth();
 
   if (!clerkUserId) {
@@ -29,4 +30,4 @@ export async function getCurrentUser() {
   });
 
   return user;
-}
+});
