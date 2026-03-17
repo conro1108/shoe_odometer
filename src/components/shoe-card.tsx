@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { MoreVertical, Pencil, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, Archive, ArchiveRestore, Trash2, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,27 +16,43 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ShoeWithMileage } from "@/lib/types";
+import { deleteShoeAction, retireShoeAction, unretireShoeAction } from "@/app/closet/actions";
+import { AddWalkDialog } from "@/components/add-walk-dialog";
+import { toast } from "sonner";
 
 interface ShoeCardProps {
   shoe: ShoeWithMileage;
 }
 
 export function ShoeCard({ shoe }: ShoeCardProps) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const isRetired = shoe.retiredAt !== null;
 
   function handleEdit(e: React.MouseEvent) {
     e.preventDefault();
-    // TODO: open edit dialog
+    router.push(`/closet/${shoe.id}`);
   }
 
-  function handleRetireToggle(e: React.MouseEvent) {
+  async function handleRetireToggle(e: React.MouseEvent) {
     e.preventDefault();
-    // TODO: call retire/unretire server action
+    setLoading(true);
+    const result = isRetired
+      ? await unretireShoeAction(shoe.id)
+      : await retireShoeAction(shoe.id);
+    setLoading(false);
+    if (!result.success) toast.error(result.error);
+    else router.refresh();
   }
 
-  function handleDelete(e: React.MouseEvent) {
+  async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
-    // TODO: call delete server action with confirmation
+    if (!confirm(`Delete "${shoe.name}"? This cannot be undone.`)) return;
+    setLoading(true);
+    const result = await deleteShoeAction(shoe.id);
+    setLoading(false);
+    if (!result.success) toast.error(result.error);
+    else router.refresh();
   }
 
   return (
@@ -70,11 +88,11 @@ export function ShoeCard({ shoe }: ShoeCardProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleEdit}>
+                <DropdownMenuItem onClick={handleEdit} disabled={loading}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleRetireToggle}>
+                <DropdownMenuItem onClick={handleRetireToggle} disabled={loading}>
                   {isRetired ? (
                     <>
                       <ArchiveRestore className="mr-2 h-4 w-4" />
@@ -90,6 +108,7 @@ export function ShoeCard({ shoe }: ShoeCardProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleDelete}
+                  disabled={loading}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -126,6 +145,18 @@ export function ShoeCard({ shoe }: ShoeCardProps) {
               <span>No walks yet</span>
             )}
           </div>
+
+          {/* Quick add walk */}
+          {!isRetired && (
+            <div onClick={(e) => e.preventDefault()}>
+              <AddWalkDialog shoeId={shoe.id} trigger={
+                <Button variant="outline" size="sm" className="w-full">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Log Walk
+                </Button>
+              } />
+            </div>
+          )}
         </CardContent>
       </Card>
     </Link>

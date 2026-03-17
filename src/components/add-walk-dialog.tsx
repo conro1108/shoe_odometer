@@ -22,9 +22,10 @@ type FieldErrors = Partial<Record<keyof WalkFormData, string>>;
 
 interface AddWalkDialogProps {
   shoeId: string;
+  trigger?: React.ReactNode;
 }
 
-export function AddWalkDialog({ shoeId }: AddWalkDialogProps) {
+export function AddWalkDialog({ shoeId, trigger }: AddWalkDialogProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -93,10 +94,12 @@ export function AddWalkDialog({ shoeId }: AddWalkDialogProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Log a Walk
-        </Button>
+        {trigger ?? (
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Log a Walk
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-[450px]">
         <DialogHeader>
