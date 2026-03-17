@@ -1,6 +1,7 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export async function getUploadUrl(userId: string, fileName: string) {
+  const supabase = getSupabaseClient();
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
   const path = `${userId}/${Date.now()}-${safeName}`;
 
