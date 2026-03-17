@@ -30,7 +30,10 @@ export async function addShoeAction(formData: FormData): Promise<ActionResult> {
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0].message };
     }
-    const shoe = await createShoe(user.id, parsed.data);
+    const shoe = await createShoe(user.id, {
+      ...parsed.data,
+      photoUrl: parsed.data.photoUrl ?? undefined,
+    });
     revalidatePath("/closet");
     return { success: true, data: shoe };
   } catch (e) {
